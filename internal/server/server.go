@@ -5,7 +5,9 @@ import (
 
 	"github.com/jabeedhexanovamedia/echo-starter/internal/config"
 	"github.com/jabeedhexanovamedia/echo-starter/internal/handler"
-	appValidator "github.com/jabeedhexanovamedia/echo-starter/internal/validator"
+	"github.com/jabeedhexanovamedia/echo-starter/internal/observability"
+	av "github.com/jabeedhexanovamedia/echo-starter/internal/validator"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -15,18 +17,37 @@ import (
 func New(cfg *config.Config) *echo.Echo {
 	e := echo.New()
 
-	// Validator
-	v := appValidator.New()
-	e.Validator = appValidator.NewEchoValidator(v)
+	// Logger
+	logger := observability.NewLogger(cfg.Server.Env, cfg.Logging.Level)
 
-	//? USAGE: in any handler
-	// if err := c.Validate(&req); err != nil {
-	// 	return c.JSON(400, err)
-	// }
+	// Observability
+	observability.RegisterMetrics()
 
-	// Global middleware
-	e.Use(middleware.RequestLogger())
+	// Middleware
+	e.Use(middleware.RequestID())
+	e.Use(observability.RequestIDMiddleware())
+	e.Use(observability.MetricsMiddleware)
 	e.Use(middleware.Recover())
+
+	e.Use(middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
+		LogURI:    true,
+		LogStatus: true,
+		LogError:  true,
+		LogValuesFunc: func(c echo.Context, v middleware.RequestLoggerValues) error {
+			log := observability.LoggerWithRequestID(logger, c)
+			log.Info().
+				Str("method", c.Request().Method).
+				Str("uri", v.URI).
+				Int("status", v.Status).
+				Err(v.Error).
+				Msg("http_request")
+			return nil
+		},
+	}))
+
+	// Validator
+	v := av.New()
+	e.Validator = av.NewEchoValidator(v)
 
 	// CORS
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
@@ -46,6 +67,7 @@ func New(cfg *config.Config) *echo.Echo {
 
 	// Register routes
 	e.GET("/", handler.Health)
+	e.GET("/metrics", echo.WrapHandler(promhttp.Handler()))
 
 	fmt.Printf("Server starting in %s mode on port %s\n", cfg.Server.Env, cfg.Server.Port)
 	return e

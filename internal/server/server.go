@@ -5,6 +5,8 @@ import (
 
 	"github.com/jabeedhexanovamedia/echo-starter/internal/config"
 	"github.com/jabeedhexanovamedia/echo-starter/internal/handler"
+	appValidator "github.com/jabeedhexanovamedia/echo-starter/internal/validator"
+
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"golang.org/x/time/rate"
@@ -12,6 +14,15 @@ import (
 
 func New(cfg *config.Config) *echo.Echo {
 	e := echo.New()
+
+	// Validator
+	v := appValidator.New()
+	e.Validator = appValidator.NewEchoValidator(v)
+
+	//? USAGE: in any handler
+	// if err := c.Validate(&req); err != nil {
+	// 	return c.JSON(400, err)
+	// }
 
 	// Global middleware
 	e.Use(middleware.RequestLogger())

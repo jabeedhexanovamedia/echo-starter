@@ -1,8 +1,6 @@
 package server
 
 import (
-	"fmt"
-
 	"github.com/jabeedhexanovamedia/echo-starter/internal/config"
 	"github.com/jabeedhexanovamedia/echo-starter/internal/handler"
 	"github.com/jabeedhexanovamedia/echo-starter/internal/observability"
@@ -72,6 +70,10 @@ func New(cfg *config.Config) *echo.Echo {
 	e.GET("/", handler.Health)
 	e.GET("/metrics", echo.WrapHandler(promhttp.Handler()))
 
-	fmt.Printf("Server starting in %s mode on port %s\n", cfg.Server.Env, cfg.Server.Port)
+	logger.Info().
+		Str("env", cfg.Server.Env).
+		Str("port", cfg.Server.Port).
+		Msg("server started")
+
 	return e
 }

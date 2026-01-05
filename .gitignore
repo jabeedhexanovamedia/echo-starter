@@ -15,3 +15,4 @@
 
 # Go modules
 go.sum
+.env

@@ -20,6 +20,9 @@ func New(cfg *config.Config) *echo.Echo {
 	// Logger
 	logger := observability.NewLogger(cfg.Server.Env, cfg.Logging.Level)
 
+	// Global Error handler
+	e.HTTPErrorHandler = NewHTTPErrorHandler(logger, cfg.Server.Env)
+
 	// Observability
 	observability.RegisterMetrics()
 
